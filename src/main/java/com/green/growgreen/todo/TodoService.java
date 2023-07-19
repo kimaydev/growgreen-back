@@ -10,7 +10,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 @Service
@@ -61,8 +63,98 @@ public class TodoService {
         return MAPPER.selTodoByDay(dto);
     }
 
-    public List<TodoVo> getTodoAll() {
-        return MAPPER.selTodoAll();
+    public List<TodoVo> getTodoAll(int year, int mon) {
+        YearMonth today = null;
+        if(year == 0 || mon == 0) {
+            today = YearMonth.now();
+        } else {
+            today = YearMonth.of(year, mon);
+        }
+        LocalDate todayStart = today.atDay(1);// 시작날짜
+        LocalDate todayEnd = today.atEndOfMonth();// 마지막 날짜
+
+        LocalDate calStart = todayStart.plusDays(-todayStart.getDayOfWeek().getValue());// 실제캘린더에 찍히는 첫주 날짜
+        LocalDate calEnd = todayEnd.plusDays(6 - todayEnd.getDayOfWeek().getValue());// 실제캘린더에 찍히는 마지막 주
+
+        TodoSelListDto dto = TodoSelListDto.builder()
+                .sDate(calStart.toString())
+                .eDate(calEnd.toString())
+                .build();
+
+        List<TodoVo> list = MAPPER.selTodoAll(dto);
+        List<TodoVo> result = new LinkedList();
+        result.addAll(list);
+
+        //반복 정보 get
+        List<TodoRepeatVo> repeatInfoList = MAPPER.selTodoRepeat(today.toString());
+        List<TodoVo> repeatVoList = createRepeatTodo(today, repeatInfoList);
+        result.addAll(repeatVoList);
+        return result;
+    }
+
+    private List<TodoVo> createRepeatTodo(YearMonth today, List<TodoRepeatVo> repeatInfoList) {
+        List<TodoVo> list = new LinkedList();
+
+        int targetYear = today.getYear(); // 들어오는 값의 YEAR
+        int targetMon = today.getMonthValue();// 들어오는 값의 MONTH
+
+        //1일의 요일을 찾으시오
+        LocalDate targetStart = today.atDay(1);
+        int startWeekOfMon = targetStart.getDayOfWeek().getValue();
+        log.info("startWeekOfMon : {}" , startWeekOfMon);
+
+        //마지막 날짜구하시오
+        LocalDate targetEnd = today.atEndOfMonth();
+        int endDayOfMonth = targetEnd.getDayOfMonth();
+        log.info("endDayOfMonth : {}" , endDayOfMonth);
+
+        // 반복등록해놓은 todo의 시작
+        for(TodoRepeatVo vo :  repeatInfoList) {
+            LocalDate voDate = vo.getDeadlineDate();
+            int voYear = voDate.getYear();
+            int voMon = voDate.getMonthValue();
+            int voDay = voDate.getDayOfMonth();
+
+            log.info("voYear : {}", voYear);
+            log.info("voMon : {}", voMon);
+            log.info("voDay : {}", voDay);
+
+            // 반복의 요일을 구해옴
+            String repeatStr = vo.getRepeatDay();
+            String[] repeatWeekArr = repeatStr.split(",");
+
+            for(String repeat : repeatWeekArr) {
+                //리터럴값을 비교할때는 앞에 리터럴값을 넣어주고 비교하는것이 좋다.
+                int dayOfWeek = "6".equals(repeat) ? 0 : Integer.parseInt(repeat) + 1;
+                int lowDay = 1;
+
+                //반복할 todo의 해당 요일 첫 날을 구할꺼예요.
+                if (dayOfWeek != startWeekOfMon) {
+                    lowDay += 7 - (startWeekOfMon - dayOfWeek);
+                }
+
+                if(targetYear == voYear && targetMon == voMon) {
+                    while(lowDay <= voDay) {
+                        lowDay += 7;
+                    }
+                }
+
+                while(lowDay <= endDayOfMonth) {
+                    TodoVo todoVo = new TodoVo();
+                    todoVo.setItodo(vo.getItodo());
+                    todoVo.setCtnt(vo.getCtnt());
+                    todoVo.setDeadlineDate(String.format("%02d-%02d", voMon, lowDay));
+                    todoVo.setDeadlineTime(vo.getDeadlineTime().toString());
+                    todoVo.setNickNm(vo.getNickNm());
+                    todoVo.setNm(vo.getNm());
+                    todoVo.setFinishYn(vo.getFinishYn());
+                    list.add(todoVo);
+                    lowDay += 7;
+                }
+            }
+        }
+
+        return list;
     }
 
     public TodoAllDto getTodoDetail(int itodo) {

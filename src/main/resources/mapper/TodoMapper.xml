@@ -40,14 +40,38 @@
     </select>
 
     <select id="selTodoAll">
-        SELECT A.ctnt, DATE_FORMAT(A.deadline_date, "%m-%d") deadlineDate,
-            date_format(A.deadline_time, "%H:%i") deadlineTime, B.nick_nm nickNm, B.nm, A.finish_yn finishYn
-        FROM p_todo A
-        INNER JOIN p_plant B
-        ON A.iplant = B.iplant
-        WHERE del_yn = 0 AND finish_yn = 0
-        ORDER BY deadline_date
+        <![CDATA[
+            SELECT A.ctnt, DATE_FORMAT(A.deadline_date, "%m-%d") deadlineDate,
+                date_format(A.deadline_time, "%H:%i") deadlineTime, B.nick_nm nickNm, B.nm, A.finish_yn finishYn
+            FROM p_todo A
+            INNER JOIN p_plant B
+            ON A.iplant = B.iplant
+            WHERE del_yn = 0 AND finish_yn = 0
+            AND ( A.deadline_date >= #{sDate} AND A.deadline_date <= #{eDate} )
+            ORDER BY deadline_date
+        ]]>
     </select>
+
+    <select id="selTodoRepeat">
+        <![CDATA[
+            SELECT C.itodo, C.ctnt, C.deadline_date deadlineDate, DATE_FORMAT(C.deadline_time, '%H:%i') deadlineTime, C.finish_yn finishYn
+            , D.repeat_day repeatDay
+            , E.nick_nm nickNm, E.nm
+            FROM p_todo C
+                INNER JOIN (
+                SELECT A.itodo, group_concat(A.repeat_day SEPARATOR ',') repeat_day
+                FROM p_day A
+                INNER JOIN p_todo B
+                ON A.itodo = B.itodo
+                GROUP BY A.itodo
+            ) D
+            ON C.itodo = D.itodo
+            INNER JOIN p_plant E
+            ON C.iplant = E.iplant
+            WHERE DATE_FORMAT(C.deadline_date, '%Y-%m') <= #{targetDate}
+        ]]>
+    </select>
+
 
     <select id="selTodoDetail">
         SELECT itodo, iplant, deadline_time deadlineTime, deadline_date deadlineDate, ctnt, repeat_yn repeatYn

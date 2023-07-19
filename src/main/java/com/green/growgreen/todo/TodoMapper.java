@@ -13,7 +13,8 @@ public interface TodoMapper {
 
     List<TodoVo> selTodo();
     List<TodoVo> selTodoByDay(TodoSelDto dto);
-    List<TodoVo> selTodoAll();
+    List<TodoVo> selTodoAll(TodoSelListDto dto);
+    List<TodoRepeatVo> selTodoRepeat(String targetDate);
 
     TodoDetailVo selTodoDetail(int itodo);
     List<String> selTodoRepeatDay(int itodo);
