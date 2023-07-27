@@ -7,10 +7,9 @@ spring:
 
   datasource:
     driver-class-name: org.mariadb.jdbc.Driver
-    url: jdbc:mariadb://192.168.0.144:3306/team_e
-    username: team_e
-    password: green502
-
+    url: jdbc:mariadb://${DB_HOST}:3306/team_e
+    username: ${DB_USERNAME}
+    password: ${DB_USERPASSWORD}
 # mybatis config
 mybatis:
   type-aliases-package: com.green.growgreen
